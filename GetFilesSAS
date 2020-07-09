@@ -1,0 +1,125 @@
+I have developed a macro GetFilesFromAllDirNSubDirs to get the file path and file name of the files that you are looking for into a dataset.
+In a real time, World, Business analysts keep their data in excel/CSV files. Sometimes BAs create folders for each year and subfolders within it for each month. This can go further down to regions, cities or clients and so on. Suddenly someone decides to put all this information into a dataset. It would be a real pain to search for these files which can be thousands or even more. Once you have file names and it location, we can write a program to loop thro’ all files to get the data into a dataset. 
+Limitation to this program is user permissions to the directories and having access from SAS Server. 
+
+%macro GetFilesFromAllDirNSubDirs (Dir = , DirDsn = , Drop = False , FileTypeList = , OS =  , LogLoc = , Log = NEW );
+	/*Dir = Is the root directory */
+	/*DirDsn = Name of the dataset where results to output*/
+	/*Drop = TRUE to drop DirDsn if exists False just to append */
+	/*FileTypeList = Comma separated values example %STR('SAS','EGP',’CSV’,’TXT’,’XLS’)*/
+	/*OS = For Windows W and for UNIX U */
+	/*Log = Loc is required only when it is a big search */
+	/*Log = Leave this as default value*/
+     
+      
+	%if %sysfunc(upcase("&Drop.")) eq "TRUE" %then
+		%do;
+
+			proc sql;
+				drop table &DirDsn.;
+			quit;
+
+		%end;
+
+/*Checking OS*/	
+	%if %sysfunc(upcase("&OS.")) eq "U" %then
+		%let Sep = %str(/);
+	%else  %let Sep = %str(\);
+/*Setting Log output*/
+	%if "&LogLoc." ne "" %then
+		%do;
+
+			proc printto log = "&logloc.&Sep.FilesLog.log"  &log.;
+			quit;
+
+		%end;
+	%else
+		%do;
+
+			proc printto log = Log  &log.;
+			quit;
+
+		%end;
+
+	data Dirs;
+		attrib Directory length= $1000
+			FileType length= $5;
+		retain Directory '';
+		rc=filename("mydir","&Dir.");
+		did=dopen("mydir");
+
+		if _n_ = 1 then
+			do;
+				/* This will execute at the end of this data step hence it is called only once*/
+				call execute('Proc Append base = &DirDsn. DATA= Dirs force; quit;');
+				Directory = Strip("&Dir.");
+			end;
+
+		if did > 0 then
+			do;
+				do i = 1 to dnum(did);
+					Name=dread(did,i);
+
+					if find(Name,'.') > 1 Then
+					do;
+						if upcase(substr( Name, (find(Name,'.')+1) , length(Name))) in (&FileTypeList) then
+								do;
+									FileName = Strip(Name);
+									FileType = upcase(substr( Name, (find(Name,'.')+1) , length(Name)));
+									output;
+								end;
+						end;
+					else
+					do;
+						SubDir = Strip("&Dir.&Sep." || Strip(Name));
+						DirDsn = Strip("&DirDsn.");
+						FileTypeList = "&FileTypeList.";
+						Logloc = "&LogLoc.";
+						OS  = "&OS.";
+
+							/*Calling get GetFilesFromAllDir recurrsively*/
+						call Execute('%GetFilesFromAllDirs(Dir = ' || Strip(SubDir) || ',DirDsn = ' || DirDsn 										||' , Drop = False ,FileTypeList = %STR('|| FileTypeList ||'), OS ='|| 									OS || ', LogLoc = ' || Logloc || ',Log =  );');
+					end;
+				end;
+
+				rc=dclose(did);
+			end;
+
+		keep Directory FileName FileType;
+	run;
+
+%mend GetFilesFromAllDirNSubDirs;
+
+%GetFilesFromAllDirNSubDirs (Dir =%str(/sas-share/data/Lev1/sasuser/simu), DirDsn =WORK.FILES , Drop = False , FileTypeList = %str('SAS') , OS = U ,	Logloc = %str(/sas-share/data/Lev1/sasuser/simu));
+
+
+
+
+
+The output like this;
+Directory	FileType	FileName
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201201.xls
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201202.xls
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201203.xls
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201204.xls
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201205.xls
+/sas-share/data/Lev1/sasuser/simu//Wellington	XLS	ex_201206.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201201.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201202.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201203.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201204.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201205.xls
+/sas-share/data/Lev1/sasuser/simu//North	XLS	ex_201206.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201202.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201201.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201204.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201203.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201206.xls
+/sas-share/data/Lev1/sasuser/simu//Auckland	XLS	ex_201205.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201201.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201202.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201203.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201204.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201205.xls
+/sas-share/data/Lev1/sasuser/simu//South	XLS	ex_201206.xls
+

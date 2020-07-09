@@ -1,0 +1,336 @@
+******************Oracle PL/SQL**************************
+
+DECLARE 
+    lines        NUMBER := 4; --Change Here 
+    lc           NUMBER := 1; ---Loop counter initialised 
+    lottomax     NUMBER := 45; ---Change here this could be 40 or 45 You have to choose numbers between 1 and lottomax (40 or 45) 
+    lottonums    NUMBER := 7; ---Change here this could be How numbers per line  lottonums (6 or 7) 
+    powerball    CHAR(1) := 'Y'; ---Change Here this could be 'Y' or 'N'
+    powerballmax NUMBER := 20; ---Change Here this could be 10 or 20 You have to choose numbers between 1 and powerballmax (10 or 20) 
+
+BEGIN 
+    WHILE lc <= lines LOOP 
+         BEGIN 
+              lc := lc + 1; 
+        FOR rec IN (SELECT Listagg(output, ',') 
+                             within GROUP(ORDER BY output) 
+                           || CASE 
+                               WHEN powerball = 'Y' THEN  '--' 
+                           || To_char( 
+                               Floor(dbms_random.Value(1, powerballmax + 1))) 
+                               ELSE ' ' 
+                             END         AS NumList, 
+                           Count(output) AS ColCount 
+                    FROM   (SELECT DISTINCT output 
+                            FROM   (SELECT Floor(dbms_random.Value(1, 
+                                                 lottomax + 1)) 
+                                           output 
+                                    FROM   dual 
+                                    CONNECT BY LEVEL <= lottonums) 
+                            ORDER  BY output)) LOOP 
+            IF rec.colcount = lottonums THEN           
+                  dbms_output.Put_line (rec.numlist);           
+            ELSE              
+                  lc := lc - 1;              
+            END IF; 
+        END LOOP; 
+        END;
+    END LOOP; 
+END; 
+
+
+******************SQL Server T-SQL**************************
+ 
+DECLARE    @lines  Integer = 4; --Change Here  
+DECLARE    @lc           Integer = 1; ---Loop counter initialised  
+DECLARE    @jc           Integer = 1; ---Loop counter initialised 
+DECLARE    @DistLotto           Integer = 1; ---Loop counter initialised   
+DECLARE    @lottomax     Integer = 45; 
+    ---Change here this could be 40 or 45 You have to choose numbers between 1 and lottomax (40 or 45) 
+DECLARE    @lottonums    Integer = 7; 
+    ---Change here this could be How numbers per line  lottonums (6 or 7)  
+DECLARE    @powerball    CHAR(1) = 'N'; ---Change Here this could be 'Y' or 'N' 
+DECLARE    @powerballmax Integer = 20; 
+DECLARE    @LottoLine Varchar(100) = NULL; 
+DECLARE @Lotto TABLE(
+    Lotto int
+)
+
+DECLARE @LottoLines TABLE
+(
+  LottoLine Varchar(100)
+)
+---Change Here this could be 10 or 20 You have to choose numbers between 1 and powerballmax (10 or 20) 
+BEGIN 
+    WHILE @lc <= @lines 
+        BEGIN 
+				SET  @lc = @lc + 1 
+				Delete  @Lotto	
+				Set @jc  =  0
+				While @jc < @lottonums	
+				begin 	
+				    	
+					Insert Into @Lotto(Lotto)
+					SELECT  1 + CONVERT(INT, (@lottomax-1+1)*RAND())
+					Set @jc  = @jc  +1
+				End
+			Select @DistLotto = Count(Distinct Lotto)  From @Lotto
+			If (@DistLotto < @lottonums) 
+			   SET  @lc = @lc - 1 
+            ELSE
+			      Begin  
+				    Insert Into @LottoLines(LottoLine) 
+			    	select 
+					  SUBSTRING(STUFF((SELECT  ',' + convert(varchar,t2.Lotto)
+							 from @Lotto t2							
+							 ORDER BY t2.Lotto
+								FOR XML PATH(''), TYPE
+								).value('.', 'NVARCHAR(MAX)') 
+							,1,0,''),2,25) +
+							Case When @powerball = 'Y' Then  '--' + convert(varchar,1 + CONVERT(INT, (@powerballmax-1+1)*RAND())) ELSE '' End   AS LottoLine
+					
+                 End
+		 End 
+		 Select * from @LottoLines
+
+END	           
+
+
+
+******************R Program**************************
+	MyLotto <- function(Type="SetLife",Lines=4){for (i in 1:Lines){
+if(Type=="OZTues"){print(sort(sample(1:45, 7, replace=F)))}
+else if(Type=="OZSat"){print(sort(sample(1:45, 6, replace=F)))}
+else if(Type=="OZMonWed"){print(sort(sample(1:45, 6, replace=F)))}
+else if(Type=="NZLotto"){print(sort(sample(1:40, 6, replace=F)))}
+else if(Type=="AUPowerBall"){print(sort(sample(1:35, 7, replace=F)))
+                             print(sort(sample(1:20, 1, replace=F)))}
+else if(Type=="NZPowerBall"){print(sort(sample(1:40, 6, replace=F)))
+                             print(sort(sample(1:10, 1, replace=F)))}
+else {print(sort(sample(1:37, 8, replace=F)))}
+}   
+paste("Good Luck with your", Type,"Numbers", sep=" ")
+}
+
+
+MyLotto <- function(Type="SetLife",Lines=1){for (i in 1:Lines){
+if(Type=="OZTues"){maxln<-45
+lnums<-7}
+else if(Type=="OZSat"){maxln<-45
+lnums<-6}
+else if(Type=="OZMonWed"){maxln<-45
+lnums<-6}
+else if(Type=="NZLotto"){maxln<-40
+lnums<-6}
+else if(Type=="AUPowerBall"){maxln<-35
+lnums<-7
+maxpn<-20
+pnums<-1}
+else if(Type=="NZPowerBall"){maxln<-40
+lnums<-6
+maxpn<-10
+pnums<-1}
+else {maxln<-37
+lnums<-8}
+print(sort(sample(1:maxln, lnums, replace=F)))
+if (Type %in% c("NZPowerBall","AUPowerBall")){print(sort(sample(1:maxpn, pnums, replace=F)))}
+}
+paste("Good Luck with your", Type, "Numbers", sep=" ")
+}
+
+
+******************Python Program**************************
+
+
+#!/usr/bin/python
+import random
+import numpy as np
+def MyLotto(Type="SetLife",Lines=1):
+    MyLotto = [[] for i in range(Lines)]
+    for i in range(Lines):
+        if  Type=="OZTues":
+            maxln=45
+            lnums=7
+        elif Type=="OZSat":
+            maxln=45
+            lnums=6
+        elif Type=="OZMonWed":
+            maxln=45
+            lnums=6
+        elif Type=="NZLotto":
+            maxln=40
+            lnums=6
+        elif Type=="AUPowerBall":
+            maxln=35
+            lnums=7
+            maxpn=20
+            pnums=1
+        elif Type=="NZPowerBall": 
+            maxln=40
+            lnums=6
+            maxpn=10
+            pnums=1
+        else :
+            maxln=37
+            lnums=8
+            Type="SetLife"        
+        count = 0
+        Lotto = []
+        while count != lnums: #this number can go up to the max random number.
+            num = random.randint(1,maxln)
+            if num  not in Lotto:
+                count += 1
+                Lotto.append(num)
+
+        for j in range(len(Lotto)):
+            swap = j + np.argmin(Lotto[j:])
+            (Lotto[j], Lotto[swap]) = (Lotto[swap], Lotto[j])
+
+        if Type == "NZPowerBall" or Type =="AUPowerBall" : 
+            num = random.randint(1,maxpn)*-1
+            Lotto.append(num)
+        MyLotto[i].append(Lotto)  
+    print("Good luck with these Python lucky numbers for ",Type)
+    return(MyLotto)
+
+
+
+
+******************SAS Program**************************
+
+
+    %Macro MyLotto(LottoName=OZPowerBall,PersonNamesDOB="Ramana,19/06/1964" );
+%Let PballMax = 20;
+%Let Pball = N;
+%let DateTime = %SYSFUNC( DATETIME(),datetime21.2);
+%if "&LottoName." = "OZPowerBall" %then
+%do;		
+	%Let LottoNums = 7;
+	%Let LottoMax = 35;
+	%Let PballMax = 20;
+	%Let Pball = Y;		
+%end;
+%Else %if "&LottoName." = "NZPowerBall" %then
+%do;		
+	%Let LottoNums = 6;
+	%Let LottoMax = 40;
+	%Let PballMax = 10;
+	%Let Pball = Y;		
+%end;
+%Else %if "&LottoName." = "OZTuesday" %then
+%do;		
+	%Let LottoNums = 7;
+	%Let LottoMax = 45;		
+%end;
+%Else %if "&LottoName." = "OZSaturday" %then
+%do;		
+	%Let LottoNums = 6;
+	%Let LottoMax = 45;	
+%end;
+%Else %if "&LottoName." = "OZMonWed" %then
+%do;		
+	%Let LottoNums = 6;
+	%Let LottoMax = 45;	
+%end;
+%Else %if "&LottoName." = "NZLotto" %then
+%do;		
+	%Let LottoNums = 6;
+	%Let LottoMax = 40;	
+%end;
+%Else %if "&LottoName." = "SetLife" %then
+%do;		
+	%Let LottoNums = 8;
+	%Let LottoMax = 37;	
+%end;
+data LottoNames;
+	Format PersonName $100. PersonDOB ddmmyy10.;
+   length word word_r $30;
+   string = &PersonNamesDOB.;
+   delim = ',';
+   modif = 'oq';
+   nwords = countw(string, delim, modif);
+   do count = 1 to nwords by 2;
+      PersonName   = strip(scan(string, count, delim, modif));
+      PersonDOB = input(strip(scan(string, count + 1, delim, modif||'r')),ddmmyy10.);
+      output;
+   end;
+   keep PersonName PersonDOB;
+run;
+
+%put %sysfunc(today());
+%let DateTime = %SYSFUNC( DATETIME(),datetime21.2);
+%put &DateTime.;
+data Lotto(keep=Lotto1 - Lotto&LottoNums.   %if  "&Pball." = "Y" %then %do; PowerBall %END;  PersonName PersonDOB );
+	
+	Set LottoNames;
+	Format PersonDOB date9.    ;
+	asc=0;
+
+	do i=1 to length(PersonName);
+		asc=asc + rank(substr(PersonName, i, 1));
+	end;
+/* 	DATETIME = DATETIME(); */
+	call streaminit(PersonDOB * "&DATETIME."DT * asc);
+	array Lotto{&LottoMax.} Lotto1 - Lotto&LottoMax.;
+	Min=1;
+	Max=&LottoMax.;
+
+	do i=1 to &LottoNums.;
+		u=rand("Uniform");
+
+		/* U[0,1] */
+		m=min + floor((1+Max-Min)*u);
+
+		/* uniform integer in Min..Max */
+		flag=0;
+
+		do j=1 to &LottoNums.;
+
+			if m=Lotto(j) then
+				flag=1;
+		end;
+
+		if flag=0 then
+			Lotto(i)=m;
+		else
+			i=i - 1;
+	end;
+
+	do i=1 to &LottoNums.;
+
+		do j=1 to &LottoNums.-i;
+
+			if Lotto(j) > Lotto(j+1) then
+				do;
+					*Sort data in descending order.;
+					Temp=Lotto(j);
+					Lotto(j)=Lotto(j+1);
+					Lotto(j+1)=Temp;
+				end;
+		end;
+	end;
+	
+	
+	 %if "&Pball." = "Y" %then 
+	 %do;
+		Min=1;
+		Max=&PballMax.;
+		u=rand("Uniform");;
+		PowerBall = min + floor((1+Max-Min)*u);	 
+	 %END;
+
+	/* uniform integer in Min..Max */
+	Put Lotto1 - Lotto&LottoNums.  %if "&Pball." = "Y" %then
+	%do;
+		PowerBall  
+	 %END;  PersonName PersonDOB ;
+	output;
+run;
+
+PROC PRINT data=lotto;
+		TITLE "Lotto Numbers Run Date:  &DateTime. " ;
+		Footnote1   "Goodluck! Goodluck! Goodluck!";
+		Footnote2  "I Wish  your dreams come true.";
+Run;
+%Mend MyLotto;
+%MyLotto(LottoName=OZTuesday,PersonNamesDOB="Venkata Ramana Potluri,19/06/1964,Rama Koteswara Rao Potluri,27/12/1937,Padmini Potluri, 10/05/1939,Butchaiah Nimmagadda ,01/07/1934,Neelima Potluri,29/11/1969,Siddharth Tatineni,17/07/1986,Kausalya Tatineni,05/11/1990,Lakkineni Bhuvan Saahith,03/07/2012,Hema Manda,16/01/1993,Vinod Chowdary Manda,07/05/1990");
